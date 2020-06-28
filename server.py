@@ -1,16 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket
 from fastapi.responses import HTMLResponse
 import uvicorn
 from datetime import datetime
 from time import time
-from pydantic import BaseModel
-from fastapi.middleware.cors import CORSMiddleware
-
-class Item(BaseModel):
-	username: str
-	password: str
-	text: str
-
 
 app = FastAPI()
 
@@ -53,35 +45,39 @@ async def status():
 			"count_messages": mi
 			}
 
-@app.get("/send_message")
-@app.post("/send_message")
-async def send_message(item:Item):
-	botegtext = ""
-	r = item
-	username = item.username
-	password = item.password
-	text = item.text
-	if username in users:
-		if users[username] != password:
-			return {"ok": "false"}
-	else:
-		users[username] = password
-	messages.append({
-					"username": username,
-					"text": text,
-					"timestamp": time(),
-					})
-	return {"ok": "true"}
+@app.websocket("/send_message")
+async def send_message(websocket: WebSocket):
+	await websocket.accept()
+	while True:
+		r = await websocket.receive_json()
+		username = r["username"]
+		password = r["password"]
+		text = r["text"]
+		if username in users:
+			if users[username] != password:
+				await websocket.send_json({"ok": "false"})
+				return ""
+		else:
+			users[username] = password
+		messages.append({
+						"username": username,
+						"text": text,
+						"timestamp": time(),
+						})
+		await websocket.send_json({"ok": "true"})
 
-@app.get("/get_messages")
-async def get_messages(after: float = 0):
-	result = []
-	for message in messages:
-		if message["timestamp"] > after:
-			result.append(message)
-	return{
-		"messages": result
-	}
+@app.websocket("/get_messages")
+async def get_messages(websocket: WebSocket):
+	await websocket.accept()
+	while True:
+		after = await websocket.receive_json()
+		result = []
+		for message in messages:
+			if message["timestamp"] > after:
+				result.append(message)
+		await websocket.send_json({
+			"messages": result
+		})
 
 
 if __name__ == "__main__":

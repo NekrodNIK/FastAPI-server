@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Chat</title>
+    </head>
+    <body>
+        <h1>MoreliaTalk</h1>
+        <form action="" onsubmit="sendMessage(event)">
+            <input type="text" id="messageText" autocomplete="off"/>
+            <button>Send</button>
+        </form>
+        <ul id='messages'>
+        </ul>
+        <script>
+            var ws = new WebSocket("ws://localhost:8000/send_message");
+            var wsview = new WebSocket("ws://localhost:8000/get_messages");
+            wsview.onmessage = function(event) {
+                var messages = document.getElementById('messages')
+                var message = document.createElement('li')
+                var content = document.createTextNode(event.data)
+                message.appendChild(content)
+                messages.appendChild(message)
+            };
+            function sendMessage(event) {
+                wsview.send(0.0)
+                var input = document.getElementById("messageText")
+                ws.send(JSON.stringify({"username": "username","password":"password1","text":"text"}))
+                input.value = ''
+                event.preventDefault()
+            }
+        </script>
+    </body>
+</html>
